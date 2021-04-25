@@ -1,255 +1,247 @@
-/****************************************
-*             ¾ä×Ó·Ö´Ê³ÌĞò             *
-*                                       *
-*   2017Äê¿Î³ÌÉè¼Æ  by software20150117 *
-****************************************/
-#include <iostream>
+// Copyright 2014 Baidu Inc. All Rights Reserved.
+// Author: ä½•ç¦ (heqi04@baidu.com)
+//
+
+#ifndef WORD_SEGMENTATION_HPP
+#define WORD_SEGMENTATION_HPP
+
+#include <string>
 #include <vector>
 #include <fstream>
-#include <string>
-#include <sstream>
 #include <stdlib.h>
-#define  uchar unsigned char
-#define  uint unsigned int
-using namespace std;
 
-fstream file("segdict.txt");
-struct Body	//×ÓÒ¶½ÚµãµÄ½á¹¹¶¨Òå
+namespace WordSegmentation
 {
-    string str;		//´¢´æºº×Ö
-    bool IsWord;	//ÊÇ·ñ³É´Ê
-    Body *brother;	//ĞÖµÜÁ´
-    Body *children;	//º¢×ÓÁ´
+#define uchar unsigned char
+#define uint unsigned int
+
+struct WordNode //å­—èŠ‚ç‚¹çš„ç»“æ„å®šä¹‰
+{
+    std::string str;    //å‚¨å­˜æ±‰å­—(GB2312)
+    bool IsWord;        //æ˜¯å¦æˆè¯
+    WordNode *brother;  //å…„å¼Ÿé“¾
+    WordNode *children; //å­©å­é“¾
 };
-struct Head	//Í·½Úµã½á¹¹¶¨Òå
-{
-    string str;		//´¢´æºº×Ö
-    Body *next;		//×ÓÁ´
-    bool IsWord;	//ÊÇ·ñ³É´Ê
-};
-vector<Head> H;//ÉùÃ÷HeadÀàĞÍµÄÈİÆ÷¶ÔÏó
-int len=0;//¼ÆËã±íÍ·µÄÊıÁ¿
-Body *p;//È«¾Ö½ÚµãËÑË÷Ö¸Õë
-Body B[400000];//´¢´æ¶ÁÈ¡µÄµ¥¸öºº×Ó ±ÜÃâµØÖ·ÖØ¸´
-int B_count = 0 ;//¼ÆÊıBÊı×éµÄ´¢´æÊıÁ¿
-bool turn_children;//ÅĞ¶ÏËÑº¢×Ó»¹ÊÇËÑĞÖµÜµÄ±êÖ¾Î»
 
-void Build_head()   //½¨Á¢±íÍ·½Úµã
+class Dictionary
 {
-    //¹¹Ôì±íÍ·
-    for(uchar c1=0xB0; c1<=0xF7; ++c1)  //4*16+(1+7)=72 Ò»ÅÅ72¸ö
-    {
-        for(uchar c2=0xA1; c2<=0xFE; ++c2) //5*16+14=94 Ò»ĞĞ94¸ö
-        {
-            Head h;
-            h.next = NULL;
-            h.IsWord = true;
-            h.str.push_back(c1);
-            h.str.push_back(c2);
-            H.push_back(h);
-            len++;
-        }
-    }
-}
 
-void Insert_node(uchar c1, uchar c2) //²åÈëµ¥¸ö´ÊÓï
-{
-    if( H[(c1-0xB0)*94+(c2-0xA1)].next == NULL )    //Èç¹û±íÍ·½ÚµãÏÂÃ»ÓĞº¢×Ó
+private:
+    std::vector<WordSegmentation::WordNode *> table_head; //å£°æ˜Headç±»å‹çš„å®¹å™¨å¯¹è±¡
+    WordSegmentation::WordNode *p_search;
+    std::fstream *p_ifstream;
+
+public:
+    Dictionary() : p_search(NULL), p_ifstream(NULL)
     {
-        H[(c1-0xB0)*94+(c2-0xA1)].next = &B[B_count];   //¸Ã±íÍ·Á´½ÓµÚÒ»¸öbody
-        if( B[B_count].IsWord )     //Èç¹ûÕâ½Úµã¹¹³É´Ê£¬ËµÃ÷Ò»¾ä»°µÄ×îºóÒ»¸ö½ÚµãÒÑ¹¹½¨(ÎªÒ¶×Ó½Úµã)
-            turn_children = 0;  //ÈÃµÚ¶ş¾ä»°Á´½ÓÊ± ÍùËüµÄĞÖµÜÁ´Ìí¼Ó£¬µ±È»ÏÂ¾ä»°½Úµã²»ÊÇÍ¬Ò»¸öÊ±²»»áËÑËüĞÖµÜÁ´
-        else{
-            p = &B[B_count];    //Î»ÖÃÖ¸ÕëÒÆµ½´Ë½Úµã
-            turn_children = 1;  //  ±êÖ¾µÄÏÂ»ØËÑË÷ËüµÄ×ÓÁ´
-        }
+        BuildHead();
     }
-    else
+
+    ~Dictionary() {
+        delete p_ifstream;
+
+        p_search = NULL;
+        p_ifstream = NULL;
+    }
+
+    bool BuildHead(void) //å»ºç«‹è¡¨å¤´èŠ‚ç‚¹
     {
-        if( !turn_children )    //ËÑË÷ĞÖµÜÁ´
+        //æ„é€ è¡¨å¤´
+        for (uchar row = 0xB0; row <= 0xF7; ++row) //4*16+(1+7)=72 ä¸€åˆ—72ä¸ª
         {
-            for(  ; p->brother && p->str.compare(B[B_count].str) ; p = p->brother );
-            if(!p->str.compare(B[B_count].str))//ÓĞÏàÍ¬µÄ
+            for (uchar line = 0xA1; line <= 0xFE; ++line) //5*16+14=94 ä¸€è¡Œ94ä¸ª
             {
-                turn_children = 1;
-                if( B[B_count].IsWord ) //Èç¹ûÕâÊ±ºò½ÓÈëµÄ½ÚµãÊÇ¸Ã¾ä×îºóÒ»¸ö×Ö(ÄÜ¹¹³É´Ê)
-                    p->IsWord = B[B_count].IsWord;//°ÑÔ­ÏÈ´æÔÚµÄÕâ¸ö½ÚµãIsWord±êÖ¾Îªtrue
-            }
-            else    //Ã»ÓĞÕÒµ½ÏàÍ¬µÄ½Úµã
-            {
-                p->brother = &B[B_count];//Ìí¼Óµ½ĞÖµÜÁ´Î²²¿
-                p = p->brother;//Î»ÖÃÖ¸ÕëÒÆµ½´Ë½Úµã
-                turn_children = 1;//ÏÂÒ»ÂÖËÑË÷º¢×ÓÁ´
-                if( B[B_count].IsWord )//±êÖ¾×ÅÏÂÒ»¸ö´Ê¿ªÊ¼Ìí¼Ó
-                    turn_children = 0;//ÔÚ±íÍ·²»Îª¿ÕÊ±ÒªÓÅÏÈËÑË÷ĞÖµÜÁ´
+                WordSegmentation::WordNode *head = new WordSegmentation::WordNode;
+                head->children = NULL;
+                head->brother = NULL;
+                // å•ä¸ªèŠ‚ç‚¹é»˜è®¤å°±æ˜¯ä¸€ä¸ªè¯
+                head->IsWord = true;
+                head->str.push_back(row);
+                head->str.push_back(line);
+                // å°†æ±‰å­—æ”¾å…¥è¡¨å¤´
+                table_head.push_back(head);
             }
         }
-        else    // ËÑË÷×ÓÁ´ pÖ¸Õë»¹Í£ÁôÔÚÉÏ¸öµã
+        return true;
+    }
+
+    bool BuildTree(char *file_path = NULL) //æå–æ–‡ä»¶æ„å»ºæ ‘
+    {
+        //è‹¥å­—å…¸æ–‡ä»¶ä¸å­˜åœ¨
+        if (NULL == file_path)
         {
-            if( p->children == NULL )   //Èç¹ûÎª¿Õ¾ÍÌí¼ÓÕâ½Úµã
+            return false;
+        }
+        p_ifstream = new std::fstream(file_path);
+        std::string temp_str; //ç”¨æ¥è¯»å–è¡Œå­—ç¬¦ä¸²z
+        uchar high, low;
+        int num;
+        while (!p_ifstream->eof()) //è¯»å–æ–‡ä»¶
+        {
+            getline(*p_ifstream, temp_str); //è¯»å–è¯å¤´
+            high = temp_str[0];        //è·å¾—å›½æ ‡ç é«˜8ä½
+            low = temp_str[1];         //è·å¾—å›½æ ‡ç ä½8ä½
+            getline(*p_ifstream, temp_str); //è¯»å–æœ¬è¯å¤´ä¸‹çš„è¯æ•°é‡
+            num = atoi(temp_str.c_str());
+            for (int cnt = 0; cnt < num; ++cnt)
             {
-                if( B[B_count].IsWord ) //Èç¹ûÕâÊÇ×îºóÒ»¸ö×Ö
-                    turn_children = 0;  //ÏÂ¸ö´ÊÊ××ÖÓÅÏÈËÑË÷ĞÖµÜÁ´
-                p->children = &B[B_count]; //Ìí¼Ó½Úµã
-                p = p->children;
-            }
-            else    //½Úµã²»Îª¿Õ£¬¾ÍÏÈÒÆ¶¯Ö¸Õëµ½º¢×Ó£¬ÒÔ±ãËÑË÷º¢×ÓµÄĞÖµÜÁ´
-            {
-                for( p=p->children ; p->brother && p->str.compare(B[B_count].str) ; p = p->brother );
-                if(!p->str.compare(B[B_count].str))//ÕÒµ½ÏàÍ¬½Úµã
-                {
-                    if( p->children )   //ÓĞº¢×Ó¾ÍËÑË÷×ÓÁ´
-                        turn_children = 1;
-                    if( B[B_count].IsWord )//Èç¹ûÕâ½ÚµãÄÜ¹¹³É´Ê
-                    {
-                        p->IsWord = true;
-                        turn_children = 0;//ÏÂ¸ö´ÊµÚÒ»¸ö×ÖÓÅÏÈËÑË÷±íÍ·½ÚµãĞÖµÜÁ´
-                    }
-                }
-                else    //ÕÒ²»µ½ÏàÍ¬µÄ¾Í°Ñ½ÚµãÌí¼Óµ½ĞÖµÜÁ´×îºóÒ»¸ö
-                {
-                    p->brother = &B[B_count];//Ìí¼Ó
-                    p = p->brother;//Ö¸ÕëÒÆ¶¯µ½´Ë½Úµã
-                    if( B[B_count].IsWord )
-                        turn_children = 0;//ÏÂ¸ö´ÊµÚÒ»¸ö×ÖÓÅÏÈËÑË÷±íÍ·½ÚµãĞÖµÜÁ´
-                    else
-                        turn_children = 1;//Íùº¢×ÓÁ´ËÑË÷
-                }
+                SingleInsert(high, low); //æŠŠè¿™è¡Œæ’å…¥
             }
         }
+        return true;
     }
-    B_count++;
-}
 
-void Single_insert(uchar c1,uchar c2) //²åÈëµ¥ĞĞ´ÊÓï
-{
-    string temp_str;
-    getline(file,temp_str); //¶ÁÈ¡ĞĞ×Ö·û´®
-    p = H[(c1-0xB0)*94+(c2-0xA1)].next;   //Ã¿ĞĞ¿ªÊ¼²åÈëÊ±£¬Î»ÖÃ¼ÇÂ¼Ö¸ÕëÖ¸Ïò¶ÔÓ¦±íÍ·µÄµÚÒ»¸öbody
-    for(uint j=2; j<temp_str.length(); j+=2)
-    {   //¹¹ÔìÒ»¸öbody½Úµã
-        B[B_count].brother = NULL;
-        B[B_count].children = NULL;
-        B[B_count].str = temp_str.substr(j,2);
-        if( j == temp_str.length()-2 )
-            B[B_count].IsWord = true;
-        else    B[B_count].IsWord = false;
-        Insert_node(c1,c2); //²åÈëÕâ¸öbody½Úµã
-    }
-}
-
-void Build_tree()   //ÌáÈ¡ÎÄ¼ş¹¹½¨Ê÷
-{
-    string temp_str;//ÓÃÀ´¶ÁÈ¡ĞĞ×Ö·û´®
-    uchar c1,c2;
-    int i;
-    int num;
-    while(!file.eof())  //¶ÁÈ¡ÎÄ¼ş
+    //æ’å…¥å•è¡Œè¯è¯­
+    void SingleInsert(uchar high, uchar low)
     {
-        getline(file,temp_str);
-        c1 = temp_str[0];       //»ñµÃ¹ú±êÂë¸ßÁ½Î»
-        c2 = temp_str[1];          //»ñµÃ¹ú±êÂëµÍÁ½Î»
-        getline(file,temp_str); //¶ÁÈ¡ĞĞ×Ö·û´®
-        num = atoi(temp_str.c_str());
-        for(i=0; i<num; i++)
+        std::string temp_str;
+        getline(*p_ifstream, temp_str); //è¯»å–è¡Œå­—ç¬¦ä¸²
+        //æ¯è¡Œå¼€å§‹æ’å…¥æ—¶ï¼Œä½ç½®è®°å½•æŒ‡é’ˆæŒ‡å‘å¯¹åº”è¡¨å¤´çš„ç¬¬ä¸€ä¸ªbody
+        int temp_str_len = temp_str.length();
+        p_search = table_head[(high - 0xB0) * 94 + (low - 0xA1)];
+        for (uint j = 2; j < temp_str_len; j += 2)
         {
-            Single_insert(c1,c2);   //°ÑÕâĞĞ²åÈë
+            //æ„é€ ä¸€ä¸ªbodyèŠ‚ç‚¹
+            WordSegmentation::WordNode *p_new_node = new WordSegmentation::WordNode;
+            p_new_node->brother = NULL;
+            p_new_node->children = NULL;
+            p_new_node->str = temp_str.substr(j, 2);
+            if (j == temp_str_len - 2)
+                p_new_node->IsWord = true;
+            else
+                p_new_node->IsWord = false;
+
+            InsertNode(p_new_node); //æ’å…¥è¿™ä¸ªbodyèŠ‚ç‚¹
         }
     }
-}
-//ºº×Ö·Ö´Ê×Óº¯Êı
-void Is_Chinese(uint &j,uint &pos,uchar c1,uchar c2,string str,uint china_num,uint succeed_num)
-{
-    string temp_str;            //ÓÃÀ´ÌáÈ¡Ã¿¸öºº×Ö
-    Body *body_p = H[ (c1-0xB0)*94 + (c2-0xA1) ].next; //»ñµÃ¶ÔÓ¦±íÍ·µÄº¢×ÓÖ¸Õë
-    for( j+=2 ; j < str.length() ; j+=2 )
+
+    bool InsertNode(WordSegmentation::WordNode *p_new_node) //æ’å…¥å•ä¸ªè¯è¯­
     {
-        temp_str = str.substr(j,2); //ÌáÈ¡Á½¸ö×Ö½Ú(¼´Ò»¸öºº×Ö)
-        c1 = temp_str[0];   //ÁÙÊ±´¢´æ Ò»»á×ö±È½ÏÓÃ
-        if( c1<0xB0 )  //Èç¹ûÓÚµ¥×Ö·ûºÍÊı×Ö¾ÍÌø³öÈ¥·Ö´ÊÖ÷º¯ÊıÈ¥´¦Àí
-            break;
-        for( ; temp_str.compare(body_p->str) && body_p->brother ; body_p = body_p->brother );
-        if( !temp_str.compare(body_p->str) )    //Èç¹ûÑ­»·½áÊøÌõ¼şÊÇÎÄ×ÖÏàÍ¬
+        if (NULL == p_new_node)
         {
-            china_num ++ ;  //³É¹¦Æ¥ÅäµÄÊıÁ¿¼ÓÒ»
-            if( body_p->IsWord ) succeed_num = china_num;//¹¹³É´ÊÔò¸üĞÂ±¾´Î³É¹¦Æ¥ÅäµÄ×ÖÊı
-            if( body_p->children != NULL )  //Èç¹ûº¢×Ó²»Îª¿Õ
+            return false;
+        }
+
+        if (NULL == p_search->children) // æ²¡æœ‰å­èŠ‚ç‚¹æ—¶ï¼Œæ·»åŠ å­©å­é“¾
+        {
+            p_search->children = p_new_node;
+            p_search = p_search->children;
+        }
+        else if (!p_search->children->str.compare(p_new_node->str))
+        {
+            // å­©å­é“¾å·²å­˜åœ¨ï¼Œæ›´æ–°ä¸‹æ˜¯å¦æ„æˆè¯
+            if (p_new_node->IsWord)
             {
-                body_p = body_p->children;  //Ôò´Óº¢×Ó¿ªÊ¼ÕÒ
+                p_search->children->IsWord = true;
             }
-            else break;
+            p_search = p_search->children;
         }
-        else   break;
-    }
-    cout<<str.substr(pos,succeed_num*2)<<"/";
-    pos += succeed_num*2;
-    j = pos;
-}
-void Segdict(string str)//·Ö´ÊÖ÷³ÌĞò
-{
-    string temp_str;            //ÓÃÀ´ÌáÈ¡Ã¿¸öºº×Ö
-    uint pos;              //±êÖ¾Ã¿´Î¶ÙºÅµÄÎ»ÖÃ
-    uint china_num;     //¼ÆËãÒÑÅĞ¶ÏµÄÁ¬Ğøºº×Ö¸öÊı
-    uint succeed_num;
-    for(uint j = 0, pos = 0; j < str.length() ;  )  //Ñ­»·¼ì²â×Ö·û
-    {
-        uchar c1,c2;            //»ñµÃ¹ú±êÂë
-        temp_str = str.substr(j,2); //ÌáÈ¡Á½¸ö×Ö½Ú(¼´Ò»¸öºº×Ö)
-        china_num = 1;
-        succeed_num = china_num;
-        c1 = temp_str[0];
-        c2 = temp_str[1];
-        if( c1>0xAF )   //ºº×Ö´¦Àí
-            Is_Chinese(j, pos, c1, c2, str, china_num, succeed_num);//ÖĞÎÄ´¦Àíº¯Êı
-        else //µ¥×Ö½ÚµÄºº×Ö´¦Àí
-        {
-            cout<<str.substr(pos,1); //ÊäÈëÒ»¸ö×Ö½Ú³¤¶ÈµÄÊı×Ö
-            pos += 1;
-            j = pos;   //±êÖ¾ÖØĞÂ±äÎªposÎ»ÖÃ
-        }
-    }
-}
-
-void Enter_string() //ÊäÈëÒª·ÖµÄ¾ä×Ó
-{
-    cout<<"ÊäÈëÄãÒª·Ö´ÊµÄ¾ä×Ó(end½áÊø):"<<endl;//²âÊÔÎÄ×Ö:2017Äêµ÷ÊÔÁËÕûÕûÈıÌìµÄ´úÂë£¬Ã»ÓĞÊ²Ã´ÊÇ°¾Ò¹½â¾ö²»ÁËµÄÊÂ¡£
-    while(1)
-    {
-        string str;
-        cin>>str;
-        if(!str.compare("end"))     //Èç¹ûÊäÈëend½áÊø³ÌĞò
-            break;
         else
         {
-            cout<<endl<<"¾ä×Ó·Ö´Ê³É£º  ";
-            Segdict(str);   //µ÷ÓÃ·Ö´Ê×Ü³ÌĞò
+            // åœ¨å…„å¼Ÿé“¾ä¸Š æœç´¢æ˜¯å¦å­˜åœ¨å€¼ç›¸åŒçš„èŠ‚ç‚¹
+            for (p_search = p_search->children;
+                 NULL != p_search->brother && p_search->brother->str.compare(p_new_node->str);
+                 p_search = p_search->brother)
+                ;
+            // æ²¡æ‰¾åˆ°å…ƒç´ ç›¸åŒçš„å…„å¼Ÿ åˆ™æ’å…¥èŠ‚ç‚¹
+            if (NULL == p_search->brother)
+            {
+                p_search->brother = p_new_node;
+            }
+            else if (p_new_node->IsWord)
+            {
+                // å·²æ‰¾åˆ° å¹¶ä¸”æœ¬è¯æ„æˆè¯ï¼Œæ›´æ–°ä¸‹çŠ¶æ€
+                p_search->brother->IsWord = p_new_node->IsWord;
+            }
+
+            p_search = p_search->brother;
         }
-        cout<<endl<<endl;
+        return true;
     }
-}
 
-void Menu() //ÏÔÊ¾²Ëµ¥(°üº¬×÷ÕßĞÅÏ¢)
-{
-    cout<<endl<<"´ÊÓï´ÊµäÒÑ¼ÓÔØ³É¹¦£¡"<<endl<<endl<<endl<<endl;
-    cout<<"             /****************************************"<<endl<<
-        "             *             ¾ä×Ó·Ö´Ê³ÌĞò              *"<<endl<<
-        "             *                                       *"<<endl<<
-        "             *   2017Äê¿Î³ÌÉè¼Æ       byÈí¼ş15.1ºÎçù *"<<endl<<
-        "             ****************************************/"<<endl<<endl;
-}
-
-int main()  //Ö÷º¯Êı
-{
-    Build_head();//½¨Á¢±íÍ·
-
-    if( file == NULL )  //Èô×ÖµäÎÄ¼ş²»´æÔÚ
+    std::string Segdict(std::string sentences) //åˆ†è¯ä¸»ç¨‹åº
     {
-        cout<<"×Öµä²»´æÔÚ£¬Çë¹Ø±Õ³ÌĞòÌí¼Ó×Öµäµ½±¾Ä¿Â¼"<<endl;
-        _sleep(3*1000);//ÑÓÊ±3Ãë
-        return 0;
+        std::string temp_str; //ç”¨æ¥ä¸´æ—¶å­˜æ”¾æ¯ä¸ªæ±‰å­—
+        std::string result;   // å­˜æ”¾åˆ†è¯åçš„ç»“æœ
+        uchar high = 0;
+        uchar low = 0;                                //è·å¾—å›½æ ‡ç 
+        for (uint pos = 0; pos < sentences.length();) //å¾ªç¯æ£€æµ‹å­—ç¬¦
+        {
+            temp_str = sentences.substr(pos, 2); //æå–ä¸¤ä¸ªå­—èŠ‚(å³ä¸€ä¸ªæ±‰å­—)
+            high = (uchar)temp_str[0];
+            if (high >= 0xB0)
+            {
+                low = (uchar)temp_str[1];
+                int maxlen = MaxChineseLen(pos, high, low, sentences);
+                result = result + sentences.substr(pos, maxlen) + "/"; //ä¸­æ–‡å¤„ç†å‡½æ•°
+                pos = pos + maxlen;
+            }    //æ±‰å­—å¤„ç†
+            else //å•å­—èŠ‚çš„æ±‰å­—å¤„ç†
+            {
+                result = result + sentences.substr(pos, 1); //è¿™é‡Œè¾“å‡ºçš„åªæ˜¯æ•°å­—
+                pos += 1;
+            }
+        }
+        return result;
     }
-    Menu();     //ÏÔÊ¾²Ëµ¥
-    Build_tree();   //¹¹½¨Á´±í
-    Enter_string(); //ÊäÈëÒª·Ö´ÊµÄ¾ä×Ó
-    return 0;   //³ÌĞò½áÊø
-}
+
+    //æ±‰å­—åˆ†è¯å­å‡½æ•°
+    int MaxChineseLen(int pos, uchar high, uchar low, std::string &sentences)
+    {
+        std::string temp_str;
+        int maxlen = 2;
+        int index = 0;                                                                                // å­˜æ”¾åˆ†è¯åçš„ç»“æœ                                                                //ç”¨æ¥æå–æ¯ä¸ªæ±‰å­—
+        WordSegmentation::WordNode *p_body = table_head[(high - 0xB0) * 94 + (low - 0xA1)]->children; //è·å¾—å¯¹åº”è¡¨å¤´çš„å­©å­æŒ‡é’ˆ
+        for (index = pos + 2; index < sentences.length(); index += 2)
+        {
+            temp_str = sentences.substr(index, 2); //æå–ä¸¤ä¸ªå­—èŠ‚(å³ä¸€ä¸ªæ±‰å­—)
+            if ((uchar)temp_str[0] < 0xB0)         //å¦‚æœäºå•å­—ç¬¦å’Œæ•°å­—å°±è·³å‡ºå»åˆ†è¯ä¸»å‡½æ•°å»å¤„ç†
+            {
+                maxlen = index - pos + 2;
+                break;
+            }
+
+            // è·Ÿå½“å‰èŠ‚ç‚¹ç›¸ç­‰
+            if (!p_body->str.compare(temp_str))
+            {
+                if (p_body->IsWord)
+                {
+                    maxlen = index - pos + 2;
+                }
+                if (NULL != p_body->children) //å¦‚æœå­©å­ä¸ä¸ºç©º
+                {
+                    p_body = p_body->children; //åˆ™ä»å­©å­å¼€å§‹æ‰¾
+                }
+                else
+                    break;
+            }
+            else
+            {
+                for (p_body = p_body->brother;
+                     p_body && temp_str.compare(p_body->str); // && p_body->brother;
+                     p_body = p_body->brother)
+                    ;
+                if (NULL == p_body)
+                {
+                    break;
+                }
+                else if (!temp_str.compare(p_body->str)) //å¦‚æœå¾ªç¯ç»“æŸæ¡ä»¶æ˜¯æ–‡å­—ç›¸åŒ
+                {
+                    if (p_body->IsWord)
+                        maxlen = index - pos + 2; //æ„æˆè¯åˆ™æ›´æ–°æœ¬æ¬¡æˆåŠŸåŒ¹é…çš„å­—æ•°
+                    if (NULL != p_body->children) //å¦‚æœå­©å­ä¸ä¸ºç©º
+                    {
+                        p_body = p_body->children; //åˆ™ä»å­©å­å¼€å§‹æ‰¾
+                    }
+                    else
+                        break;
+                }
+            }
+        }
+        return maxlen;
+    }
+};
+
+} // namespace WordSegmentation
+
+#endif
