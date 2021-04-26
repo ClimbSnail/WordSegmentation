@@ -20,7 +20,7 @@ int main(int argc, char **argv) //������
     WordSegmentation::Dictionary *dict = new WordSegmentation::Dictionary();
     dict->BuildHead();                            //������ͷ
     Menu();                                       //��ʾ�˵�
-    bool ret = dict->BuildTree("segdict_gb2312"); //��������
+    bool ret = dict->BuildTree("dict_gb2312"); //��������
     if (false == ret)
     {
         printf("%s\n", "�ֵ䲻���ڣ���رճ��������ֵ䵽��Ŀ�?");
