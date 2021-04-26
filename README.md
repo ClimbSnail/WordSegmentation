@@ -7,4 +7,4 @@
 运行项目中的"comppile_and_run.sh"
 
 ## GB2312中文编码参考
-<http://tools.jb51.net/table/gb2312>z
+<http://tools.jb51.net/table/gb2312>
