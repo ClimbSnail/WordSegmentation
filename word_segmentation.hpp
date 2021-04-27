@@ -1,3 +1,10 @@
+/****************************************
+*             句子分词程序             *
+*                                       *
+*   2017年课程设计  by software20150117 *
+****************************************/
+
+
 #ifndef WORD_SEGMENTATION_HPP
 #define WORD_SEGMENTATION_HPP
 
