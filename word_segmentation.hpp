@@ -18,6 +18,12 @@ namespace WordSegmentation
 #define uchar unsigned char
 #define uint unsigned int
 
+enum marry_mode
+{
+    MARRY_MODE_MAX = 0,
+    MARRY_MODE_MIN = 1
+};
+
 struct WordNode //字节点的结构定义
 {
     std::string str;    //储存汉字(GB2312)
@@ -49,10 +55,10 @@ public:
 
     bool InsertNode(WordSegmentation::WordNode *p_new_node); //插入单个词语
 
-    std::string Segdict(std::string sentences); //分词主程序
+    std::string Segdict(std::string sentences, bool marry_mode = MARRY_MODE_MAX); //分词主程序
 
     //汉字分词子函数
-    int MaxChineseLen(int pos, uchar high, uchar low, std::string &sentences);
+    int GetChineseLen(int pos, uchar high, uchar low, std::string &sentences, bool marry_mode);
 };
 } // namespace WordSegmentation
 #endif

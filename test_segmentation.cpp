@@ -56,8 +56,8 @@ int Run(int argc, char **argv)
         std::string del_str;
         getline(in_file, del_str);
         printf("string: %s\n", del_str.c_str());
-        printf("result: %s\n\n", dict->Segdict(del_str).c_str());
-        out_file << dict->Segdict(del_str).c_str() << std::endl;
+        printf("result: %s\n\n", dict->Segdict(del_str, WordSegmentation::MARRY_MODE_MIN).c_str());
+        out_file << dict->Segdict(del_str, WordSegmentation::MARRY_MODE_MIN).c_str() << std::endl;
     }
     in_file.close();
     out_file.close();

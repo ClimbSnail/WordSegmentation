@@ -130,7 +130,7 @@ bool WordSegmentation::Dictionary::InsertNode(WordSegmentation::WordNode *p_new_
     return true;
 }
 
-std::string WordSegmentation::Dictionary::Segdict(std::string sentences) //分词主程序
+std::string WordSegmentation::Dictionary::Segdict(std::string sentences, bool marry_mode) //分词主程序
 {
     std::string temp_str; //用来临时存放每个汉字
     std::string result;   // 存放分词后的结果
@@ -143,7 +143,7 @@ std::string WordSegmentation::Dictionary::Segdict(std::string sentences) //分�
         if (high >= 0xB0)
         {
             low = (uchar)temp_str[1];
-            int maxlen = MaxChineseLen(pos, high, low, sentences);
+            int maxlen = GetChineseLen(pos, high, low, sentences, marry_mode);
             result = result + sentences.substr(pos, maxlen) + "/"; //中文处理函数
             pos = pos + maxlen;
         }    //汉字处理
@@ -157,7 +157,7 @@ std::string WordSegmentation::Dictionary::Segdict(std::string sentences) //分�
 }
 
 //汉字分词子函数
-int WordSegmentation::Dictionary::MaxChineseLen(int pos, uchar high, uchar low, std::string &sentences)
+int WordSegmentation::Dictionary::GetChineseLen(int pos, uchar high, uchar low, std::string &sentences, bool marry_mode)
 {
     std::string temp_str;
     int maxlen = 2;
@@ -178,6 +178,11 @@ int WordSegmentation::Dictionary::MaxChineseLen(int pos, uchar high, uchar low, 
             if (p_body->IsWord)
             {
                 maxlen = index - pos + 2;
+                if (marry_mode == MARRY_MODE_MIN)
+                {
+                    //如果是最早匹配 匹配到就可以结束循环
+                    break;
+                }
             }
             if (NULL != p_body->children) //如果孩子不为空
             {
@@ -199,7 +204,14 @@ int WordSegmentation::Dictionary::MaxChineseLen(int pos, uchar high, uchar low, 
             else if (!temp_str.compare(p_body->str)) //如果循环结束条件是文字相同
             {
                 if (p_body->IsWord)
+                {
                     maxlen = index - pos + 2; //构成词则更新本次成功匹配的字数
+                    if (marry_mode == MARRY_MODE_MIN)
+                    {
+                        //如果是最早匹配 匹配到就可以结束循环
+                        break;
+                    }
+                }
                 if (NULL != p_body->children) //如果孩子不为空
                 {
                     p_body = p_body->children; //则从孩子开始找
