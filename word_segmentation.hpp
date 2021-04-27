@@ -1,7 +1,7 @@
 /****************************************
-*             ¾ä×Ó·Ö´Ê³ÌĞò             *
+*             å¥å­åˆ†è¯ç¨‹åº             *
 *                                       *
-*   2017Äê¿Î³ÌÉè¼Æ  by software20150117 *
+*   2017å¹´è¯¾ç¨‹è®¾è®¡  by software20150117 *
 ****************************************/
 
 
@@ -18,18 +18,18 @@ namespace WordSegmentation
 #define uchar unsigned char
 #define uint unsigned int
 
-struct WordNode //×Ö½ÚµãµÄ½á¹¹¶¨Òå
+struct WordNode //å­—èŠ‚ç‚¹çš„ç»“æ„å®šä¹‰
 {
-    std::string str;    //´¢´æºº×Ö(GB2312)
-    bool IsWord;        //ÊÇ·ñ³É´Ê
-    WordNode *brother;  //ĞÖµÜÁ´
-    WordNode *children; //º¢×ÓÁ´
+    std::string str;    //å‚¨å­˜æ±‰å­—(GB2312)
+    bool IsWord;        //æ˜¯å¦æˆè¯
+    WordNode *brother;  //å…„å¼Ÿé“¾
+    WordNode *children; //å­©å­é“¾
 };
 
 class Dictionary
 {
 private:
-    std::vector<WordSegmentation::WordNode *> table_head; //ÉùÃ÷HeadÀàĞÍµÄÈİÆ÷¶ÔÏó
+    std::vector<WordSegmentation::WordNode *> table_head; //å£°æ˜Headç±»å‹çš„å®¹å™¨å¯¹è±¡
     WordSegmentation::WordNode *p_search;
     std::fstream *p_ifstream;
 
@@ -40,18 +40,18 @@ public:
     }
     ~Dictionary();
 
-    bool BuildHead(void); //½¨Á¢±íÍ·½Úµã
+    bool BuildHead(void); //å»ºç«‹è¡¨å¤´èŠ‚ç‚¹
 
-    bool BuildTree(char *file_path = NULL); //ÌáÈ¡ÎÄ¼ş¹¹½¨Ê÷
+    bool BuildTree(char *file_path = NULL); //æå–æ–‡ä»¶æ„å»ºæ ‘
 
-    //²åÈëµ¥ĞĞ´ÊÓï
+    //æ’å…¥å•è¡Œè¯è¯­
     void SingleInsert(uchar high, uchar low);
 
-    bool InsertNode(WordSegmentation::WordNode *p_new_node); //²åÈëµ¥¸ö´ÊÓï
+    bool InsertNode(WordSegmentation::WordNode *p_new_node); //æ’å…¥å•ä¸ªè¯è¯­
 
-    std::string Segdict(std::string sentences); //·Ö´ÊÖ÷³ÌĞò
+    std::string Segdict(std::string sentences); //åˆ†è¯ä¸»ç¨‹åº
 
-    //ºº×Ö·Ö´Ê×Óº¯Êı
+    //æ±‰å­—åˆ†è¯å­å‡½æ•°
     int MaxChineseLen(int pos, uchar high, uchar low, std::string &sentences);
 };
 } // namespace WordSegmentation
