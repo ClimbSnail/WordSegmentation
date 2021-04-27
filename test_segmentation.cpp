@@ -9,7 +9,7 @@
 #include <fstream>
 #include <stdio.h>
 #include <string.h>
-#include "word_segmentation.hpp"
+#include "word_segmentation.h"
 
 void Menu() //显示菜单(包含作者信息)
 {

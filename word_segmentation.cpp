@@ -5,7 +5,7 @@
 ****************************************/
 
 
-#include "word_segmentation.hpp"
+#include "word_segmentation.h"
 
 WordSegmentation::Dictionary::~Dictionary()
 {
